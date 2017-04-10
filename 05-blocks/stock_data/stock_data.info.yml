@@ -1,0 +1,4 @@
+name: Stock Data Module
+descripton: Updates the stock blocks.
+type: module
+core: 8.x

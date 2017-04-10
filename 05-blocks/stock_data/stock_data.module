@@ -1,0 +1,53 @@
+<?php
+
+/**
+ * Implements hook_cron().
+ */
+function stock_data_cron() {
+
+  // Load block content by their property values.
+  $blocks = \Drupal::entityManager()
+      ->getStorage('block_content')
+      ->loadByProperties(array('type' => 'stock_exchange_rate_card'));
+
+  // Iterate through the blocks
+  foreach($blocks as $block) {
+    $symbol = $block->field_symbol->value;
+    $stock_data = get_stock_data($symbol);
+
+    if ($stock_data['Status'] == 'SUCCESS') {
+
+      $block->field_last_price  = $stock_data['LastPrice'];
+      $block->field_change = $stock_data['Change'];
+
+      $block->save();
+    }
+  }
+}
+
+
+/**
+ * Helper function.
+ * Returns an array of the data for this stock symbol.
+ */
+function get_stock_data($symbol) {
+  $client = new \GuzzleHttp\Client();
+
+  $url = 'http://dev.markitondemand.com/MODApis/Api/v2/Quote/json?symbol=' . $symbol . '&callback=myFunction';
+
+  $res = $client->request('GET', $url);
+
+  try {
+    $res_body = $res->getBody();
+
+    $res_str = (string) $res_body;
+    $res_json = json_decode($res_str, true);
+
+    return $res_json;
+  }
+  catch (RequestException $e) {
+    watchdog_exception('stock price exception: ', $e);
+  }
+}
+
+
